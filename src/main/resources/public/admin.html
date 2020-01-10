@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Flight Finder</title>
+    <style>
+        @import url("/css/admin.css");
+    </style>
+</head>
+
+<body translate="no">
+    <div id="app" v-cloak>
+        <div class="header">
+            <a class="logo" href="/index.html#home" v-on:click="currentPage='home'">flight finder</a>
+            <div class="nav">
+                <p v-show="user.username">Hi, {{ user.username }}</p>
+                <p>
+                    <a href="/admin.html#user" v-show="isAdmin()">Users</a>
+                    <a href="/admin.html#report" v-show="isAdmin()">Reports</a>
+                    <a href="/admin.html#flight" v-show="isAdmin()">Flights</a>
+                    <a href="/customer_rep.html#airport" v-show="isCustomerRep()">Airports</a>
+                    <a href="/customer_rep.html#airline" v-show="isCustomerRep()">Airlines</a>
+                    <a href="/customer_rep.html#aircraft" v-show="isCustomerRep()">Aircrafts</a>
+                    <a href="/customer_rep.html#flight" v-show="isCustomerRep()">Flights</a>
+                    <a href="/customer_rep.html#waitlist" v-show="isCustomerRep()">Waitlists</a>
+                    <a href="/index.html#reservation" v-show="user.username && !isCustomerRep() && !isAdmin()" v-on:click="toReservation()">Reservations</a>
+                    <a href="/customer_rep.html#reservation" v-show="user.username && isCustomerRep() && !isAdmin()">Reservations</a>
+                    <a href="/admin.html#reservation" v-show="user.username && !isCustomerRep() && isAdmin()">Reservations</a>
+                    <a href="/index.html#cart">Cart</a>
+                    <a href="/logout" v-show="user.username" v-on:click="logout()">logout</a>
+                    <a href="/login" v-show="!user.username">login</a>
+                </p>
+            </div>
+        </div>
+
+        <div class="page user" v-show="currentPage=='user'">
+            <div class="edit" v-bind:class="{ show: showUserEditor }">
+                <table>
+                    <tr>
+                        <td>Username:</td>
+                        <td><input type="text" v-model="edit_user.username" /></td>
+                    </tr>
+                    <tr>
+                        <td>Password:</td>
+                        <td><input type="password" v-model="edit_user.password" /></td>
+                    </tr>
+                    <tr>
+                        <td>Roles:</td>
+                        <td><input type="checkbox" v-model="edit_user.roles" value='admin' />Admin <input type="checkbox" v-model="edit_user.roles" value='customer_representative' />CustomerRepresentative</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2">
+                            <input type="submit" value="Add/Update" v-on:click="upsertUser()" />
+                            <input type="submit" value="Cancel" v-on:click="showUserEditor=!showUserEditor" />
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div class="main">
+                <h4>Users: <a href="#user" v-on:click="edit_user={roles:[]}; showUserEditor=!showUserEditor">Add new user</a></h4>
+                <div class="result">
+                    <table class="flights">
+                        <tr>
+                            <th>Username</th>
+                            <th>Roles</th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                        <tbody v-for="(r, index) in users">
+                            <tr>
+                                <td>{{ r.username }}</td>
+                                <td>{{ r.roles }}</td>
+                                <td><a href="#user" v-on:click="editUser(r)">Edit</a></td>
+                                <td><a href="#user" v-on:click="deleteUser(r)">Delete</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="page report" v-show="currentPage=='report'">
+            <div class="main">
+                <h4>Summary reports:</h4>
+                <table class="summary">
+                    <tr>
+                        <td>Top revenue generating customers</td>
+                        <td>
+                            <ul v-for="(r, index) in reports.top_customers">
+                                <li>{{r.username}}: ${{r.revenue}} booked</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Most active flights</td>
+                        <td>
+                            <ul v-for="(r, index) in reports.top_flights">
+                                <li>{{r.airline_id}}-{{r.flight_id}}: {{r.tickets}} tickets sold</li>
+                            </ul>
+                        </td>
+                    </tr>
+                </table>
+
+                <h4>Reports on revenue:</h4>
+                <table class="revenue">
+                    <tr>
+                        <td>
+                            <table>
+                                <tr>
+                                    <td><input type="month" v-model="search_report.month" placeholder="Purchase Month" /></td>
+                                    <td><input type="submit" value="By Month" v-on:click="getRevenueByMonth()" /></td>
+                                </tr>
+                                <tr>
+                                    <td><input type="text" v-model="search_report.airline_id" placeholder="Airline Code" /></td>
+                                    <td><input type="submit" value="By Airline" v-on:click="getRevenueByAirline()" /></td>
+                                </tr>
+                                <tr>
+                                    <td><input type="text" v-model="search_report.flight_id" placeholder="Flight Number" /></td>
+                                    <td><input type="submit" value="By Flight" v-on:click="getRevenueByFlight()" /></td>
+                                </tr>
+                                <tr>
+                                    <td><input type="text" v-model="search_report.username" placeholder="Customer Username" /></td>
+                                    <td><input type="submit" value="By Customer" v-on:click="getRevenueByCustomer()" /></td>
+                                </tr>
+                            </table>
+                        </td>
+                        <td>Total Revenue: ${{reports.revenue_by[0].revenue}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="page flight" v-show="currentPage=='flight'">
+            <h4>Search:</h4>
+            <div class="search">
+                <div>
+                    <input type="text" name="airport_id" placeholder="Airport Code" v-model="search_flight.airport_id" v-on:keyup.enter="search_flight.airport_id_filter=search_flight.airport_id" />
+                    <input type="submit" value="Search" v-on:click="search_flight.airport_id_filter=search_flight.airport_id" />
+                </div>
+            </div>
+            <div class="main">
+                <h4>Flight:</h4>
+                <div class="result">
+                    <table class="flights">
+                        <tr>
+                            <th>Airline Code</th>
+                            <th>Flight Number</th>
+                            <th>Departure Airport</th>
+                            <th>Departure Weekday</th>
+                            <th>Departure Time</th>
+                            <th>Arrival Airport</th>
+                            <th>Arrival Weekday</th>
+                            <th>Arrival Time</th>
+                            <th>Aircraft Number</th>
+                            <th>Price</th>
+                        </tr>
+                        <tbody v-for="(r, index) in filteredFlightlist">
+                            <tr>
+                                <td>{{ r.airline_id }}</td>
+                                <td>{{ r.flight_id }}</td>
+                                <td>{{ r.departure_airport_id }}</td>
+                                <td>{{ r.departure_weekday }}</td>
+                                <td>{{ r.departure_time }}</td>
+                                <td>{{ r.arrival_airport_id }}</td>
+                                <td>{{ r.arrival_weekday }}</td>
+                                <td>{{ r.arrival_time }}</td>
+                                <td>{{ r.aircraft_id }}</td>
+                                <td>{{ r.price }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="page reservation" v-show="currentPage=='reservation'">
+            <div class="main">
+                <h4>Search:</h4>
+                <div class="search">
+                    <div>
+                        <input type="text" name="customer" placeholder="Customer Username" v-model="search_reservation.username" v-on:keyup.enter="toReservation()" />
+                        <input type="text" name="airline_id" placeholder="Airline Code" v-model="search_reservation.airline_id" />
+                        <input type="text" name="flight_id" placeholder="Flight Number" v-model="search_reservation.flight_id" />
+                        <input type="date" name="departure_date" placeholder="Depature Date" v-model="search_reservation.departure_date" />
+                        <input type="submit" value="Search" v-on:click="toReservation()" />
+                    </div>
+                </div>
+                <h4>Reservations:</h4>
+                <div class="result">
+                    <table class="flights">
+                        <tr>
+                            <th>
+                                <p>Reservation</p>
+                                <p>Number</p>
+                            </th>
+                            <th>
+                                <p>Customer</p>
+                            </th>
+                            <th>
+                                <p>Purchase</p>
+                                <p>DateTime</p>
+                            </th>
+                            <th>
+                                <p>Seat</p>
+                                <p>Class</p>
+                            </th>
+                            <th>
+                                <p>Special</p>
+                                <p>Meal</p>
+                            </th>
+                            <th>
+                                <p>Total</p>
+                                <p>Fare</p>
+                            </th>
+                            <th>
+                                <p>Booking</p>
+                                <p>Status</p>
+                            </th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                        <tbody v-for="(r, index) in reservations">
+                            <tr>
+                                <td>{{ r.reservation_id }}</td>
+                                <td>{{ r.username }}</td>
+                                <td>{{ r.purchase_date }} {{ r.purchase_time }}</td>
+                                <td>{{ r.seat_class }}</td>
+                                <td>{{ r.special_meal }}</td>
+                                <td>{{ r.total_fare }}</td>
+                                <td>{{ r.booking_status }}</td>
+                                <td><a href="#reservation" v-on:click="getTickets(r.reservation_id)">Details</a></td>
+                                <td><a href="#" v-show="r.seat_class!='economy' && r.username.localeCompare(user.username)==0" v-on:click="deleteReservation(r.reservation_id)">Cancel</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4>Details:</h4>
+                <div class="result">
+                    <table class="flights">
+                        <tr>
+                            <th>
+                                <p>Flight</p>
+                                <p>Number</p>
+                            </th>
+                            <th>
+                                <p>Departure</p>
+                                <p>DateTime</p>
+                            </th>
+                            <th>
+                                <p>From</p>
+                                <p>To</p>
+                            </th>
+                            <th>Status</th>
+                        </tr>
+                        <tbody v-for="(t, index) in tickets">
+                            <tr>
+                                <td>{{ t.airline_id+"-"+t.flight_id }}</td>
+                                <td>{{ t.departure_date }} {{ getFlight(t.airline_id+"-"+t.flight_id+"-"+t.departure_weekday).departure_time }}</td>
+                                <td>
+                                    {{ getFlight(t.airline_id+"-"+t.flight_id+"-"+t.departure_weekday).departure_airport_id }} - {{ getFlight(t.airline_id+"-"+t.flight_id+"-"+t.departure_weekday).arrival_airport_id }}
+                                </td>
+                                <td>{{ t.booking_status }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="data">
+            <p>JSON Data:</p>
+            <p>{{ }}</p>
+        </div>
+
+        <div class="footer" id="footer">
+            @Copyright 2019
+        </div>
+
+        <!-- Non-Vue code -->
+        <div class="message" v-bind:class="{ show: showMessage }">
+            {{ message }}
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.1.8/vue.js"></script>
+    <script src="https://code.jquery.com/jquery-2.1.1.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vee-validate/2.0.3/vee-validate.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/node-uuid/1.4.8/uuid.js"></script>
+
+    <script id="rendered-js" src="/js/admin.js"></script>
+</body>
+
+</html>

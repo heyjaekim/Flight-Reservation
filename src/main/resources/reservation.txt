@@ -1,0 +1,30 @@
+This is not a valid SQL script, this text file
+serves only to maintain posterity of potential future records
+
+insert ignore reservation(reservation_id, username, origin_airport_id, purchase_date, purchase_time, 
+						departure_date, departure_time, total_fare, special_meal, seat_class, booking_status)
+values ('r1', 'user','JFK','2019-11-28','12:00','2019-12-01','05:30','350','no','economic','confirmed'),
+('r2','user','JFK','2019-11-28','12:00','2019-12-01','05:30','700','no','business','confirmed'),
+('r3','user','JFK','2019-11-28','12:00','2019-12-01','05:30','1050','no','firstclass','confirmed'),
+('r4', 'user1','JFK','2019-11-10','14:00','2019-11-27','12:00','850','no','economic','confirmed'),
+('r5', 'user1','JFK','2019-11-10','14:00','2019-11-27','12:00','1750','no','business','confirmed'),
+('r6', 'user1','JFK','2019-11-10','14:00','2019-11-27','12:00','3450','no','firstclass','confirmed'),
+('r7', 'user2','JFK','2019-11-20','16:00','2019-11-27','12:00','910','no','economic','confirmed'),
+('r8', 'user2','JFK','2019-11-20','16:00','2019-11-27','12:00','1810','no','business','confirmed'),
+('r9', 'user2','JFK','2019-11-20','16:00','2019-11-27','12:00','3510','no','firstclass','confirmed'),
+('r10', 'user3','JFK','2019-11-15','18:00','2019-12-02','13:30','300','no','economic','confirmed'),
+('r11', 'user3','JFK','2019-11-15','18:00','2019-12-02','13:30','550','no','business','confirmed'),
+('r12', 'user3','JFK','2019-11-15','18:00','2019-12-02','13:30','1050','no','firstclass','confirmed'),
+('r13', 'user4','JFK','2019-11-30','20:00','2019-12-02','13:30','400','no','economic','confirmed'),
+('r14', 'user4','JFK','2019-11-30','20:00','2019-12-02','13:30','750','no','business','confirmed'),
+('r15', 'user4','JFK','2019-11-30','20:00','2019-12-02','13:30','1250','no','firstclass','confirmed'),
+('r16', 'user5','EWR','2020-11-30','22:00','2020-01-04','14:20','250','no','economic','confirmed'),
+('r17', 'user5','EWR','2019-11-30','22:00','2020-01-04','14:20','5000','no','business','confirmed'),
+('r18', 'user5','EWR','2019-11-30','22:00','2020-01-04','14:20','750','no','firstclass','confirmed'),
+('r19','user5','JFK','2019-11-30','22:00','2019-12-02','13:30','180','no','economic','confirmed'),
+('r19-1','user5','MIA','2019-11-30','22:00','2019-12-03','09:20','200','no','economic','confirmed'),
+('r20','user6','JFK','2019-11-28','22:00','2019-12-02','13:30','150','no','economic','confirmed'),
+('r20-1','user6','MIA','2019-11-28','22:00','2019-12-03','09:20','170','no','economic','confirmed'),
+('r21','user7','JFK','2019-11-15','22:00','2019-12-02','13:30','150','no','economic','confirmed'),
+('r21-1','user7','MIA','2019-11-15','22:00','2019-12-03','09:20','120','no','economic','confirmed')
+;

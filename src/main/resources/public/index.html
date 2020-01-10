@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Flight Finder</title>
+    <style>
+        @import url("/css/index.css");
+    </style>
+</head>
+
+<body translate="no">
+    <div id="app" v-on:click="clickaway" v-cloak>
+        <div class="header">
+            <a class="logo" href="/index.html#home" v-on:click="currentPage='home'">flight finder</a>
+            <div class="nav">
+                <p v-show="user.username">Hi, {{ user.username }}</p>
+                <p>
+                    <a href="/admin.html#user" v-show="isAdmin()">Users</a>
+                    <a href="/admin.html#report" v-show="isAdmin()">Reports</a>
+                    <a href="/admin.html#flight" v-show="isAdmin()">Flights</a>
+                    <a href="/customer_rep.html#airport" v-show="isCustomerRep()">Airports</a>
+                    <a href="/customer_rep.html#airline" v-show="isCustomerRep()">Airlines</a>
+                    <a href="/customer_rep.html#aircraft" v-show="isCustomerRep()">Aircrafts</a>
+                    <a href="/customer_rep.html#flight" v-show="isCustomerRep()">Flights</a>
+                    <a href="/customer_rep.html#waitlist" v-show="isCustomerRep()">Waitlists</a>
+                    <a href="/index.html#reservation" v-show="user.username && !isCustomerRep() && !isAdmin()" v-on:click="toReservation()">Reservations</a>
+                    <a href="/customer_rep.html#reservation" v-show="user.username && isCustomerRep() && !isAdmin()">Reservations</a>
+                    <a href="/admin.html#reservation" v-show="user.username && !isCustomerRep() && isAdmin()">Reservations</a>
+                    <a href="/index.html#cart">Cart</a>
+                    <a href="/logout" v-show="user.username" v-on:click="logout()">logout</a>
+                    <a href="/login" v-show="!user.username">login</a>
+                </p>
+            </div>
+        </div>
+
+        <div class="page home" v-show="currentPage=='home'">
+            <div class="filters" v-bind:class="{ show: showFilters }">
+                <h4>Filters:
+                    <a class="nav" href="#home" v-on:click="showFilters=!showFilters"><i
+                            class="material-icons">close</i></a>
+                </h4>
+                <div class="filter">
+                    <p>Price:</p>
+                    <ul>
+                        <li>
+                            <label>Min</label>
+                            <input type="number" v-model="filters.min_price" />
+                        </li>
+                        <li>
+                            <label>Max</label>
+                            <input type="number" v-model="filters.max_price" />
+                        </li>
+                    </ul>
+                </div>
+                <div class="filter">
+                    <p>Stops:</p>
+                    <ul>
+                        <li>
+                            <input type="radio" id="stop-100" value="100" v-model="filters.stops" />
+                            <label for="stop-100">Any stops</label>
+                        </li>
+                        <li>
+                            <input type="radio" id="stop-0" value="0" v-model="filters.stops" />
+                            <label for="stop-0">Nonstop only</label>
+                        </li>
+                        <li>
+                            <input type="radio" id="stop-1" value="1" v-model="filters.stops" />
+                            <label for="stop-1">
+                                <= 1 stop</label> </li>
+                        <li>
+                            <input type="radio" id="stop-2" value="2" v-model="filters.stops" />
+                            <label for="stop-1">
+                                        <= 2 stops</label> </li>
+                    </ul>
+                </div>
+                <!-- <div class="filter">
+                                            <p>Departure Times:</p>
+                                            <ul>
+                                                <li>
+                                                    <input type="checkbox" id="time-early" value="00-08"
+                                                        v-model="filters.departure_times" />
+                                                    <label for="time-early">Early(12AM-8AM)</label>
+                                                </li>
+                                                <li>
+                                                    <input type="checkbox" id="time-midday" value="08-18"
+                                                        v-model="filters.departure_times" />
+                                                    <label for="time-morning">Midday(8AM-6PM)</label>
+                                                </li>
+                                                <li>
+                                                    <input type="checkbox" id="time-late" value="18-24"
+                                                        v-model="filters.departure_times" />
+                                                    <label for="time-late">Late(8PM-12AM)</label>
+                                                </li>
+                                            </ul>
+                </div>
+                -->
+                <div class="filter">
+                    <p>Airlines:</p>
+                    <ul>
+                        <li v-for="airline in choices.airlines">
+                            <input type="checkbox" v-bind:id="airline" v-bind:value="airline" v-model="filters.airlines" />
+                            <label v-bind:for="airline">{{ airlines[airline] }}</label>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="main">
+                <h4>Search:</h4>
+                <div class="search">
+                    <div>
+                        <span class="airport" id="departure_airport">
+                            <input type="text" placeholder="Departure Airport/City" v-model="departure_airport_id"
+                                v-on:focus="$event.target.select()" v-on:click="show_departure_airport=true"
+                                v-on:keyup.esc="show_departure_airport=false"
+                                v-on:keyup="departure_airport_id=departure_airport_id.toUpperCase()" />
+                            <div class="auto_airport" v-show="show_departure_airport">
+                                <p>Airports serving area:</p>
+                                <ul>
+                                    <li v-for="a in filteredDepartureAirport"
+                                        v-on:click="departure_airport_id=a.airport_id; show_departure_airport=false;">
+                                        {{ a.airport_id }} - {{ a.airport_name }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </span>
+                        <span class="airport" id="arrival_airport">
+                            <input type="text" placeholder="Arrival Airport/City" v-model="arrival_airport_id"
+                                v-on:focus="$event.target.select()" v-on:click="show_arrival_airport=true"
+                                v-on:keyup.esc="show_arrival_airport=false"
+                                v-on:keyup="arrival_airport_id=arrival_airport_id.toUpperCase()" />
+                            <div class="auto_airport" v-show="show_arrival_airport">
+                                <p>Airports serving area:</p>
+                                <ul>
+                                    <li v-for="a in filteredArrivalAirport"
+                                        v-on:click="arrival_airport_id=a.airport_id; show_arrival_airport=false;">
+                                        {{ a.airport_id }} - {{ a.airport_name }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </span>
+                        <input type="date" name="departure_date" v-model="departure_date" />
+                        <input type="date" name="return_date" v-model="return_date" />
+                    </div>
+                    <div>
+                        <input type="checkbox" v-model="flex_date">Flex Date(+/-3 days)
+                        <input type="submit" value="Search" v-on:click="search()" />
+                        <a href="#home" v-on:click="searchReturn()">Return Trip</a>
+                    </div>
+                </div>
+                <h4>Flights:
+                    <a class="nav" href="#home" v-on:click="showFilters=!showFilters"><i
+                            class="material-icons">filter_list</i></a>
+                </h4>
+                <div class="result">
+                    <table class="flights">
+                        <tr>
+                            <th>Airline</th>
+                            <th>
+                                <p>Departure</p>
+                                <p>Airport</p>
+                            </th>
+                            <th>
+                                <p>Departure</p>
+                                <p>Date</p>
+                            </th>
+                            <th v-on:click="sort='departure'">
+                                <a href="#home">
+                                    <p>Departure</p>
+                                    <p>Time <i class="material-icons">unfold_more</i></p>
+                                </a>
+                            </th>
+                            <th>
+                                <p>Arrival</p>
+                                <p>Airport</p>
+                            </th>
+                            <th>
+                                <p>Arrival</p>
+                                <p>Date</p>
+                            </th>
+                            <th v-on:click="sort='arrival'">
+                                <a href="#home">
+                                    <p>Arrival</p>
+                                    <p>Time <i class="material-icons">unfold_more</i></p>
+                                </a>
+                            </th>
+                            <th>Stops</th>
+                            <th v-on:click="sort='price'">
+                                <a href="#home">
+                                    <p>Price</p>
+                                    <p><i class="material-icons">unfold_more</i></p>
+                                </a>
+                            </th>
+                            <th></th>
+                        </tr>
+                        <tbody v-for="(connection, index) in filteredResult">
+                            <tr class="summary" v-on:click="if(showDetail==index) showDetail=-1; else if(showDetail!=index) showDetail=index;">
+                                <td>
+                                    <p>{{ connection.map(c=>getFlight(c).airline_id).join(",") }}</p>
+                                </td>
+                                <td>
+                                    <p>{{ getFlight(connection[0]).departure_airport_id }}</p>
+                                </td>
+                                <td>
+                                    <p>{{ getDepartureDate(connection[0]) }}</p>
+                                </td>
+                                <td>
+                                    <p>{{ getFlight(connection[0]).departure_time }}</p>
+                                </td>
+                                <td>
+                                    <p>{{ getFlight(connection[connection.length-1]).arrival_airport_id }}</p>
+                                </td>
+                                <td>
+                                    <p>{{ getArrivalDate(connection[connection.length-1]) }}</p>
+                                </td>
+                                <td>
+                                    <p>{{ getFlight(connection[connection.length-1]).arrival_time }}</p>
+                                </td>
+                                <td>{{ connection.length-1 }}</td>
+                                <td>{{ connection.reduce((sum,c)=>sum+parseFloat(getFlight(c).price),0) }}</td>
+                                <td>
+                                    <i v-show="showDetail==index" class="material-icons">expand_less</i>
+                                    <i v-show="showDetail!=index" class="material-icons">expand_more</i>
+                                </td>
+                            </tr>
+                            <tr class="detail" v-show="showDetail==index">
+                                <td colspan="10">
+                                    <div>
+                                        <a href="#home" v-on:click="addFlight(connection)">Select flight</a>
+                                        <a href="#cart" v-on:click="quickCheckout(connection)">Quick Checkout</a>
+                                    </div>
+                                    <div class="legs">
+                                        <div v-for="(leg, index) in connection" class="leg">
+                                            <p>
+                                                Depart: {{ getDepartureDate(leg) }} . {{ getFlight(leg).departure_time }} . {{ airports[getFlight(leg).departure_airport_id].airport_name }}
+                                            </p>
+                                            <p>
+                                                Arrive: {{ getArrivalDate(leg) }} . {{ getFlight(leg).arrival_time }} . {{ airports[getFlight(leg).arrival_airport_id].airport_name }}
+                                            </p>
+                                            <p>
+                                                {{ airlines[getFlight(leg).airline_id] }} . {{ getFlight(leg).airline_id }}-{{ getFlight(leg).flight_id }} . {{ aircrafts[getFlight(leg).aircraft_id].aircraft_model }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="page cart" v-show="currentPage=='cart'">
+            <div class="main">
+                <h4>Checkout:</h4>
+                <div class="search" v-show="user.username">
+                    <select v-model="seat_class">
+                        <option value="economy">Economy Class</option>
+                        <option value="business">Business Class</option>
+                        <option value="first">First Class</option>
+                    </select>
+                    <select v-model="special_meal">
+                        <option value="regular">Regular Meal</option>
+                        <option value="vegetarian">Vegetarian Meal</option>
+                        <option value="allergen free">Allergen-Free Meal</option>
+                    </select>
+                    <input type="text" v-show="isCustomerRep()" v-model="customer" placeholder="customer username" />
+                    <input type="hidden" v-model="number_of_seats" />
+                    <input type="submit" value="Checkout" v-on:click="checkout()" />
+                </div>
+                <div class="search" v-show="!user.username">
+                    Please first <a href="/login">login</a> or <a href="/register.html">register</a> an account!
+                </div>
+                <h4>Flights:</h4>
+                <div class="result">
+                    <table class="flights">
+                        <tr>
+                            <th>Airline</th>
+                            <th>
+                                <p>Departure</p>
+                                <p>Airport</p>
+                            </th>
+                            <th>
+                                <p>Departure</p>
+                                <p>Date</p>
+                            </th>
+                            <th>
+                                <p>Departure</p>
+                                <p>Time</p>
+                            </th>
+                            <th>
+                                <p>Arrival</p>
+                                <p>Airport</p>
+                            </th>
+                            <th>
+                                <p>Arrival</p>
+                                <p>Date</p>
+                            </th>
+                            <th>
+                                <p>Arrival</p>
+                                <p>Time</p>
+                            </th>
+                            <th>Stops</th>
+                            <th>Price</th>
+                            <!-- <th></th> -->
+                        </tr>
+                        <tbody v-for="(connection, index) in cart">
+                            <tr>
+                                <td>
+                                    <p>{{ connection.map(c=>getFlight(c).airline_id).join(",") }}</p>
+                                </td>
+                                <td>
+                                    <p>{{ getFlight(connection[0]).departure_airport_id }}</p>
+                                </td>
+                                <td>
+                                    <p>{{ getDepartureDate(connection[0]) }}</p>
+                                </td>
+                                <td>
+                                    <p>{{ getFlight(connection[0]).departure_time }}</p>
+                                </td>
+                                <td>
+                                    <p>{{ getFlight(connection[connection.length-1]).arrival_airport_id }}</p>
+                                </td>
+                                <td>
+                                    <p>{{ getArrivalDate(connection[connection.length-1]) }}</p>
+                                </td>
+                                <td>
+                                    <p>{{ getFlight(connection[connection.length-1]).arrival_time }}</p>
+                                </td>
+                                <td>{{ connection.length-1 }}</td>
+                                <td>{{ connection.reduce((sum,c)=>sum+parseFloat(getFlight(c).price),0) }}</td>
+                                <!-- <td>
+                      <a href="#cart" v-on:click="showDetail=-1" v-show="showDetail==index"><i class="material-icons">expand_less</i></a>
+                      <a href="#cart" v-on:click="showDetail=index" v-show="showDetail!=index"><i class="material-icons">expand_more</i></a>
+                    </td> -->
+                            </tr>
+                            <tr class="detail">
+                                <td colspan="10">
+                                    <div>
+                                        <a href="#cart" v-on:click="removeFlight(index)">Remove flight</a>
+                                    </div>
+                                    <div class="legs">
+                                        <div v-for="(leg, index) in connection" class="leg">
+                                            <p>
+                                                Depart: {{ getDepartureDate(leg) }} . {{ getFlight(leg).departure_time }} . {{ airports[getFlight(leg).departure_airport_id].airport_name }}
+                                            </p>
+                                            <p>
+                                                Arrive: {{ getArrivalDate(leg) }} . {{ getFlight(leg).arrival_time }} . {{ airports[getFlight(leg).arrival_airport_id].airport_name }}
+                                            </p>
+                                            <p>
+                                                {{ airlines[getFlight(leg).airline_id] }} . {{ getFlight(leg).airline_id }}-{{ getFlight(leg).flight_id }} . {{ aircrafts[getFlight(leg).aircraft_id].aircraft_model }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="page reservation" v-show="currentPage=='reservation'">
+            <div class="main">
+                <h4>Reservations:</h4>
+                <div class="result">
+                    <table class="flights">
+                        <tr>
+                            <th>
+                                <p>Reservation</p>
+                                <p>Number</p>
+                            </th>
+                            <th>
+                                <p>Customer</p>
+                            </th>
+                            <!-- <th><p>Departure</p><p>Airport</p></th> -->
+                            <!-- <th><p>Departure</p><p>Date</p></th> -->
+                            <th>
+                                <p>Purchase</p>
+                                <p>DateTime</p>
+                            </th>
+                            <th>
+                                <p>Seat</p>
+                                <p>Class</p>
+                            </th>
+                            <th>
+                                <p>Special</p>
+                                <p>Meal</p>
+                            </th>
+                            <th>
+                                <p>Total</p>
+                                <p>Fare</p>
+                            </th>
+                            <th>
+                                <p>Booking</p>
+                                <p>Status</p>
+                            </th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                        <tbody v-for="(r, index) in reservations">
+                            <tr>
+                                <td>{{ r.reservation_id }}</td>
+                                <td>{{ r.username }}</td>
+                                <!-- <td>{{ r.departure_airport_id }}</td> -->
+                                <!-- <td>{{ r.departure_date }}</td> -->
+                                <td>{{ r.purchase_date }} {{ r.purchase_time }}</td>
+                                <td>{{ r.seat_class }}</td>
+                                <td>{{ r.special_meal }}</td>
+                                <td>{{ r.total_fare }}</td>
+                                <td>{{ r.booking_status }}</td>
+                                <td><a href="#reservation" v-on:click="getTickets(r.reservation_id)">Details</a></td>
+                                <!-- <td><a href="#reservation" v-on:click="deleteReservation(r.reservation_id)">Cancel</a></td> -->
+                                <td><a href="#" v-show="r.seat_class!='economy'" v-on:click="deleteReservation(r.reservation_id)">Cancel</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4>Details:</h4>
+                <div class="result">
+                    <table class="flights">
+                        <tr>
+                            <!-- <th><p>Ticket</p><p>Number</p></th> -->
+                            <!-- <th><p>Leg</p><p>Number</p></th> -->
+                            <th>
+                                <p>Flight</p>
+                                <p>Number</p>
+                            </th>
+                            <th>
+                                <p>Departure</p>
+                                <p>DateTime</p>
+                            </th>
+                            <th>
+                                <p>From</p>
+                                <p>To</p>
+                            </th>
+                            <!-- <th>Price</th> -->
+                            <th>Status</th>
+                        </tr>
+                        <tbody v-for="(t, index) in tickets">
+                            <tr>
+                                <!-- <td>{{ t.ticket_id }}</td> -->
+                                <!-- <td>{{ t.leg_id }}</td> -->
+                                <td>{{ t.airline_id+"-"+t.flight_id }}</td>
+                                <td>{{ t.departure_date }} {{ getFlight(t.airline_id+"-"+t.flight_id+"-"+t.departure_weekday).departure_time }}
+                                </td>
+                                <td>
+                                    {{ getFlight(t.airline_id+"-"+t.flight_id+"-"+t.departure_weekday).departure_airport_id }} - {{ getFlight(t.airline_id+"-"+t.flight_id+"-"+t.departure_weekday).arrival_airport_id }}
+                                </td>
+                                <!-- <td>{{ t.price }}</td> -->
+                                <td>{{ t.booking_status }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="data">
+            <p>JSON Data:</p>
+            <p>{{ showFilters }}</p>
+        </div>
+
+        <div class="footer" id="footer">
+            @Copyright 2019
+        </div>
+
+        <!-- Non-Vue code -->
+        <div class="message" v-bind:class="{ show: showMessage }">
+            {{ message }}
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.1.8/vue.js"></script>
+    <script src="https://code.jquery.com/jquery-2.1.1.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vee-validate/2.0.3/vee-validate.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/node-uuid/1.4.8/uuid.js"></script>
+    <script src="https://unpkg.com/vue-clickaway/dist/vue-clickaway"></script>
+
+    <script id="rendered-js" src="/js/index.js"></script>
+</body>
+
+</html>

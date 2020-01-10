@@ -1,0 +1,19 @@
+@import url('/css/base.css');
+.login {
+    padding: 24px;
+}
+
+.login * {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    margin: 16px 0;
+}
+
+.login input[type=submit] {
+    display: block;
+    padding: 8px 16px;
+    width: auto;
+    margin: 32px auto;
+    border-radius: 3px;
+}
